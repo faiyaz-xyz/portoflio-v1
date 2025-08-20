@@ -1,181 +1,74 @@
 "use client";
 
-import * as THREE from "three";
-import * as dat from "dat.gui";
-import { useEffect } from "react";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { OrbitControls, useGLTF } from "@react-three/drei";
+import { GLTF } from "three-stdlib";
+import { JSX, useRef } from "react";
+import Ground from "../components/Ground";
+
+function Car(props: JSX.IntrinsicElements["group"]) {
+  const gltf = useGLTF("/models/race-car/model.gltf") as GLTF;
+  return <primitive object={gltf.scene} {...props} />;
+}
+
+function Tree(props: JSX.IntrinsicElements["group"]) {
+  const gltf = useGLTF("/models/trees/model.gltf") as GLTF;
+  return <primitive object={gltf.scene} {...props} />;
+}
 
 export default function Home() {
-  useEffect(() => {
-    // Scene, camera, renderer
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
+  const treeRefs = useRef<any[]>([]);
+  const treeCount = 20;
 
-    const renderer = new THREE.WebGLRenderer();
-    renderer.shadowMap.enabled = true;
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+  // Initialize tree positions
+  const treePositions = Array.from({ length: treeCount }, (_, i) => ({
+    x: (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 2),
+    y: 0,
+    z: -i * 5,
+    scale: 0.2 + Math.random() * 0.1, // smaller scale
+  }));
 
-    // Axes helper
-    const axesHelper = new THREE.AxesHelper(3);
-    scene.add(axesHelper);
-
-    // Cube
-    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const boxMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const box = new THREE.Mesh(boxGeometry, boxMaterial);
-    scene.add(box);
-
-    const planeGeometry = new THREE.PlaneGeometry(30, 30);
-    const planeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      side: THREE.DoubleSide,
+  // Animate trees
+  useFrame((state, delta) => {
+    treeRefs.current.forEach((tree, i) => {
+      if (!tree) return;
+      tree.position.z += delta * 10; // move forward
+      if (tree.position.z > 10) tree.position.z = -100; // loop behind
     });
-    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    scene.add(plane);
-    plane.rotation.x = -0.5 * Math.PI;
-    plane.receiveShadow = true;
+  });
 
-    const gridHelper = new THREE.GridHelper(30);
-    scene.add(gridHelper);
+  return (
+    <div style={{ width: "100vw", height: "100vh" }}>
+      <Canvas
+        shadows
+        camera={{ position: [10, 10, 10], fov: 60 }}
+        gl={{ antialias: true }}
+      >
+        <directionalLight
+          position={[10, 15, 10]}
+          intensity={1.5}
+          color={"#FFEFA1"}
+          castShadow
+        />
+        <ambientLight intensity={0.5} color={"#FFF8E1"} />
+        <color attach="background" args={["#FFF3CC"]} />
+        <fog attach="fog" args={["#FFF3CC", 10, 50]} />
 
-    const sphereGeometry = new THREE.SphereGeometry();
-    const sphereMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0000ff,
-      wireframe: false,
-    });
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    scene.add(sphere);
-    sphere.position.set(-5, 3, 0);
-    sphere.castShadow = true;
-    let sphereId = sphere.id;
+        <Car position={[0, 0, 0]} scale={0.5} />
+        <Ground />
 
-    // const ambientLight = new THREE.AmbientLight(0x333333);
-    // scene.add(ambientLight);
+        {/* Trees */}
+        {treePositions.map((pos, idx) => (
+          <Tree
+            key={idx}
+            ref={(el) => (treeRefs.current[idx] = el)}
+            position={[pos.x, pos.y, pos.z]}
+            scale={pos.scale}
+          />
+        ))}
 
-    // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    // scene.add(directionalLight);
-    // directionalLight.position.set(-30, 50, 0);
-    // directionalLight.castShadow = true;
-    // directionalLight.shadow.camera.bottom = -12;
-
-    // const dLightHelper = new THREE.DirectionalLightHelper(directionalLight, 5);
-    // scene.add(dLightHelper);
-
-    // const dLightShadowHelper = new THREE.CameraHelper(
-    //   directionalLight.shadow.camera
-    // );
-    // scene.add(dLightShadowHelper);
-
-    const spotLight = new THREE.SpotLight(0xffffff);
-    scene.add(spotLight);
-    spotLight.position.set(-100, 100, 0);
-    spotLight.castShadow = true;
-    spotLight.angle = 0.2;
-
-    const sLightHelper = new THREE.SpotLightHelper(spotLight);
-    scene.add(sLightHelper);
-
-    // scene.fog = new THREE.Fog(0xffffff, 0, 200);
-    scene.fog = new THREE.FogExp2(0xffffff, 0.01);
-
-    // renderer.setClearColor(0xffea00);
-
-    const textureLoader = new THREE.TextureLoader();
-    scene.background = textureLoader.load("/sky.jpg");
-
-    // const cubeTextureLoader = new THREE.CubeTextureLoader();
-    // scene.background = cubeTextureLoader.load([
-    //   "/sky.jpg",
-    //   "/sky.jpg",
-    //   "/sky.jpg",
-    //   "/sky.jpg",
-    //   "/sky.jpg",
-    //   "/sky.jpg",
-    // ]);
-
-    const gui = new dat.GUI();
-
-    const options = {
-      sphereColor: "#ffea00",
-      wireframe: false,
-      speed: 0.01,
-      angle: 0.2,
-      penumbra: 0,
-      intensity: 1,
-    };
-
-    gui
-      .addColor(options, "sphereColor")
-      .onChange(function (e: THREE.ColorRepresentation) {
-        sphere.material.color.set(e);
-      });
-
-    gui.add(options, "wireframe").onChange(function (e) {
-      sphere.material.wireframe = e;
-    });
-
-    gui.add(options, "speed", 0, 0.1);
-
-    gui.add(options, "angle", 0, 1);
-    gui.add(options, "penumbra", 0, 1);
-    gui.add(options, "intensity", 0, 1);
-
-    camera.position.set(-10, 30, 30);
-
-    const orbit = new OrbitControls(camera, renderer.domElement);
-    orbit.update();
-
-    let step = 0;
-
-    const mousePosition = new THREE.Vector2();
-
-    window.addEventListener("mousemove", function (e) {
-      mousePosition.x = (e.clientX / this.window.innerWidth) * 2 - 1;
-      mousePosition.x = -(e.clientX / this.window.innerHeight) * 2 + 1;
-    });
-
-    const rayCaster = new THREE.Raycaster();
-
-    // Animate
-    function animate() {
-      box.rotation.x += 0.01;
-      box.rotation.y += 0.01;
-
-      step += options.speed;
-      sphere.position.y = 10 * Math.abs(Math.sin(step));
-
-      spotLight.angle = options.angle;
-      spotLight.penumbra = options.penumbra;
-      spotLight.intensity = options.intensity;
-      sLightHelper.update();
-
-      rayCaster.setFromCamera(mousePosition, camera);
-      const intersects = rayCaster.intersectObjects(scene.children);
-      console.log(intersects);
-
-      for (let i = 0; i < intersects.length; i++) {
-        if (intersects[i].object.id == sphereId) {
-          intersects[i].object.material.color.set(0xff00ff);
-        }
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    renderer.setAnimationLoop(animate);
-
-    // Cleanup on unmount
-    return () => {
-      renderer.dispose();
-      document.body.removeChild(renderer.domElement);
-    };
-  }, []);
-
-  return <div></div>;
+        <OrbitControls />
+      </Canvas>
+    </div>
+  );
 }
