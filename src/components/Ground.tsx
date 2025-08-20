@@ -8,7 +8,7 @@ export default function Ground() {
   texture.repeat.set(20, 20);
 
   useFrame(() => {
-    texture.offset.y -= 0.01; // moves grass to simulate car motion
+    texture.offset.y -= 0.05; // moves grass to simulate car motion
   });
 
   return (
