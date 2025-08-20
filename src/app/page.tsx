@@ -53,6 +53,7 @@ export default function Home() {
     scene.add(sphere);
     sphere.position.set(-5, 3, 0);
     sphere.castShadow = true;
+    let sphereId = sphere.id;
 
     // const ambientLight = new THREE.AmbientLight(0x333333);
     // scene.add(ambientLight);
@@ -86,16 +87,17 @@ export default function Home() {
     // renderer.setClearColor(0xffea00);
 
     const textureLoader = new THREE.TextureLoader();
-    // scene.background = textureLoader.load("/sky.jpg");
-    const cubeTextureLoader = new THREE.CubeTextureLoader();
-    scene.background = cubeTextureLoader.load([
-      "/sky.jpg",
-      "/sky.jpg",
-      "/sky.jpg",
-      "/sky.jpg",
-      "/sky.jpg",
-      "/sky.jpg",
-    ]);
+    scene.background = textureLoader.load("/sky.jpg");
+
+    // const cubeTextureLoader = new THREE.CubeTextureLoader();
+    // scene.background = cubeTextureLoader.load([
+    //   "/sky.jpg",
+    //   "/sky.jpg",
+    //   "/sky.jpg",
+    //   "/sky.jpg",
+    //   "/sky.jpg",
+    //   "/sky.jpg",
+    // ]);
 
     const gui = new dat.GUI();
 
@@ -131,6 +133,15 @@ export default function Home() {
 
     let step = 0;
 
+    const mousePosition = new THREE.Vector2();
+
+    window.addEventListener("mousemove", function (e) {
+      mousePosition.x = (e.clientX / this.window.innerWidth) * 2 - 1;
+      mousePosition.x = -(e.clientX / this.window.innerHeight) * 2 + 1;
+    });
+
+    const rayCaster = new THREE.Raycaster();
+
     // Animate
     function animate() {
       box.rotation.x += 0.01;
@@ -143,6 +154,16 @@ export default function Home() {
       spotLight.penumbra = options.penumbra;
       spotLight.intensity = options.intensity;
       sLightHelper.update();
+
+      rayCaster.setFromCamera(mousePosition, camera);
+      const intersects = rayCaster.intersectObjects(scene.children);
+      console.log(intersects);
+
+      for (let i = 0; i < intersects.length; i++) {
+        if (intersects[i].object.id == sphereId) {
+          intersects[i].object.material.color.set(0xff00ff);
+        }
+      }
 
       renderer.render(scene, camera);
     }
